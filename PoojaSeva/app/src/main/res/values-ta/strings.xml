@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">பூஜா சேவை</string>
+    <string name="home_greeting">வணக்கம்</string>
+    <string name="action_book_now">இப்போதே பதிவு செய்</string>
+</resources>

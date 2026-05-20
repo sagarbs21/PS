@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">पूजा सेवा</string>
+    <string name="home_greeting">नमस्ते</string>
+    <string name="action_book_now">अभी बुक करें</string>
+</resources>

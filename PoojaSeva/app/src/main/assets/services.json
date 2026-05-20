@@ -1,0 +1,127 @@
+{
+  "categories": [
+    { "id": "griha", "name": "Griha Pravesh", "tagline": "Bless your new home", "iconKey": "diya" },
+    { "id": "vivaha", "name": "Vivaha Sanskar", "tagline": "Sacred wedding rites", "iconKey": "mandala" },
+    { "id": "satyanarayan", "name": "Satyanarayan", "tagline": "Monthly katha & pooja", "iconKey": "om" },
+    { "id": "navagraha", "name": "Navagraha / Graha Shanti", "tagline": "Planetary peace rituals", "iconKey": "mandala" },
+    { "id": "festival", "name": "Festival Poojas", "tagline": "Diwali, Ganesh, Navratri", "iconKey": "diya" },
+    { "id": "antim", "name": "Antim Sanskar", "tagline": "Last rites & tarpan", "iconKey": "om" }
+  ],
+  "services": [
+    {
+      "id": "s_griha_basic", "categoryId": "griha", "name": "Griha Pravesh Pooja",
+      "shortDescription": "Auspicious housewarming ceremony.",
+      "description": "Traditional housewarming pooja invoking Lord Ganesha and Vastu Devta to bless your new home with peace, prosperity and positive energy.",
+      "vidhi": ["Sankalp", "Ganesh Pooja", "Kalash Sthapana", "Vastu Pooja", "Havan", "Aarti & Prasad"],
+      "samagri": ["Coconut", "Mango leaves", "Kumkum", "Haldi", "Akshat", "Camphor", "Ghee", "Flowers", "Incense"],
+      "durationMinutes": 120, "suggestedTime": "Morning, Brahma Muhurta", "priceInr": 4500, "isFeatured": true,
+      "rating": 4.8, "reviewsCount": 214
+    },
+    {
+      "id": "s_griha_premium", "categoryId": "griha", "name": "Griha Pravesh + Vastu Shanti",
+      "shortDescription": "Extended ritual with full Vastu Shanti.",
+      "description": "Comprehensive Griha Pravesh with full Vastu Shanti havan to neutralise vastu doshas in the home.",
+      "vidhi": ["Sankalp", "Ganesh Pooja", "Navagraha Pooja", "Vastu Mandala", "Havan with 108 ahutis", "Purnahuti", "Aarti"],
+      "samagri": ["All basic samagri", "Navagraha samidha", "Hawan kund", "Til, jau, sugar"],
+      "durationMinutes": 180, "suggestedTime": "Morning, Brahma Muhurta", "priceInr": 8500,
+      "rating": 4.9, "reviewsCount": 96
+    },
+    {
+      "id": "s_vivaha_full", "categoryId": "vivaha", "name": "Vivaha Sanskar (Full Vedic)",
+      "shortDescription": "Complete Vedic wedding ceremony.",
+      "description": "Pandit-led traditional Vedic wedding with all sanskars: kanyadaan, mangalsutra, saptapadi, sindoor daan and more.",
+      "vidhi": ["Var Mala", "Kanyadaan", "Mangalsutra", "Saptapadi", "Sindoor Daan", "Ashirwad"],
+      "samagri": ["Mandap setup", "Havan kund", "Saptapadi items", "Mangalsutra", "Sindoor"],
+      "durationMinutes": 240, "suggestedTime": "As per muhurta", "priceInr": 21000, "isFeatured": true,
+      "rating": 4.9, "reviewsCount": 142
+    },
+    {
+      "id": "s_vivaha_engagement", "categoryId": "vivaha", "name": "Sagai / Engagement Pooja",
+      "shortDescription": "Ring ceremony with Vedic blessings.",
+      "description": "Brief sankalp and Ganesh pooja before ring exchange to bless the upcoming union.",
+      "vidhi": ["Ganesh Pooja", "Sankalp", "Ring Exchange", "Aarti"],
+      "samagri": ["Coconut", "Flowers", "Sweets", "Diya"],
+      "durationMinutes": 60, "suggestedTime": "Evening", "priceInr": 2500,
+      "rating": 4.7, "reviewsCount": 58
+    },
+    {
+      "id": "s_satya_basic", "categoryId": "satyanarayan", "name": "Satyanarayan Pooja & Katha",
+      "shortDescription": "Monthly Satyanarayan vrat pooja.",
+      "description": "Traditional Satyanarayan vrat pooja followed by recitation of all five chapters of Satyanarayan katha.",
+      "vidhi": ["Sankalp", "Kalash Sthapana", "Satyanarayan Pooja", "Katha (5 chapters)", "Aarti", "Prasad distribution"],
+      "samagri": ["Banana leaves", "Panchamrit", "Sheera (prasad)", "Kumkum", "Akshat", "Tulsi"],
+      "durationMinutes": 90, "suggestedTime": "Purnima evening", "priceInr": 2100, "isFeatured": true,
+      "rating": 4.9, "reviewsCount": 312
+    },
+    {
+      "id": "s_navagraha", "categoryId": "navagraha", "name": "Navagraha Shanti Havan",
+      "shortDescription": "Pacify all 9 planets.",
+      "description": "Detailed havan invoking all nine planetary deities to remove doshas and bring harmony.",
+      "vidhi": ["Sankalp", "Navagraha Avahan", "108 ahuti per graha", "Purnahuti", "Aarti"],
+      "samagri": ["9 grain samidha", "Til, jau, ghee", "Hawan kund", "Coloured cloth (9)"],
+      "durationMinutes": 180, "suggestedTime": "Sunday morning", "priceInr": 7500,
+      "rating": 4.8, "reviewsCount": 87
+    },
+    {
+      "id": "s_shani", "categoryId": "navagraha", "name": "Shani Shanti Pooja",
+      "shortDescription": "Reduce Shani dosha effects.",
+      "description": "Specific pooja to appease Shani dev — recommended during Sade Sati or Shani Dhaiya.",
+      "vidhi": ["Sankalp", "Shani Avahan", "Til oil abhishek", "Mantra jaap (108)", "Aarti"],
+      "samagri": ["Til oil", "Black cloth", "Black sesame", "Iron item"],
+      "durationMinutes": 75, "suggestedTime": "Saturday", "priceInr": 2800,
+      "rating": 4.7, "reviewsCount": 134
+    },
+    {
+      "id": "s_diwali", "categoryId": "festival", "name": "Lakshmi-Ganesh Diwali Pooja",
+      "shortDescription": "Diwali night ceremonial pooja.",
+      "description": "Traditional Lakshmi-Ganesh pooja on Amavasya night of Diwali for prosperity and abundance.",
+      "vidhi": ["Sankalp", "Ganesh Pooja", "Lakshmi Pooja", "Kuber Pooja", "Bahi-khata pooja", "Aarti"],
+      "samagri": ["Lakshmi-Ganesh idol", "Silver coin", "Kamal flower", "Kheel-batashe", "Diya & oil"],
+      "durationMinutes": 90, "suggestedTime": "Pradosh kaal", "priceInr": 3100, "isFeatured": true,
+      "rating": 4.9, "reviewsCount": 421
+    },
+    {
+      "id": "s_ganesh", "categoryId": "festival", "name": "Ganesh Sthapana & Visarjan",
+      "shortDescription": "Ganesh Chaturthi rituals.",
+      "description": "Pranapratishtha for Ganesh idol on Chaturthi and visarjan rites at the end of the festival.",
+      "vidhi": ["Pranapratishtha", "Daily aarti guidance", "Visarjan pooja"],
+      "samagri": ["Modak", "Durva grass", "Red cloth", "Coconut"],
+      "durationMinutes": 60, "suggestedTime": "Madhyahna", "priceInr": 1800,
+      "rating": 4.8, "reviewsCount": 178
+    },
+    {
+      "id": "s_navratri", "categoryId": "festival", "name": "Durga / Navratri Pooja",
+      "shortDescription": "Nine-night Durga aaradhana.",
+      "description": "Daily Durga pooja and Devi mantra jaap across all nine nights of Navratri.",
+      "vidhi": ["Ghatasthapana", "Daily Durga pooja", "Kanya pooja (Ashtami/Navami)"],
+      "samagri": ["Kalash", "Akhand jyoti", "Red chunari", "Sringaar items"],
+      "durationMinutes": 60, "suggestedTime": "Morning daily", "priceInr": 5500,
+      "rating": 4.9, "reviewsCount": 96
+    },
+    {
+      "id": "s_antim", "categoryId": "antim", "name": "Antim Sanskar (Cremation Rites)",
+      "shortDescription": "Last rites with Vedic mantras.",
+      "description": "Pandit assistance for full antim sanskar rituals at the cremation ground.",
+      "vidhi": ["Snan", "Pind daan preparation", "Mantras at chita", "Kapal kriya"],
+      "samagri": ["Til", "Ghee", "Pind ingredients", "Kusha grass"],
+      "durationMinutes": 120, "suggestedTime": "As required", "priceInr": 5500,
+      "rating": 4.9, "reviewsCount": 64
+    },
+    {
+      "id": "s_tarpan", "categoryId": "antim", "name": "Pind Daan & Tarpan",
+      "shortDescription": "Shraddh tarpan for ancestors.",
+      "description": "Annual or Pitru Paksha tarpan and pind daan for ancestral peace.",
+      "vidhi": ["Sankalp", "Tarpan with til-jal", "Pind daan", "Brahman bhojan guidance"],
+      "samagri": ["Til", "Jau", "Kusha", "Pind ingredients"],
+      "durationMinutes": 90, "suggestedTime": "Morning", "priceInr": 2500,
+      "rating": 4.8, "reviewsCount": 142
+    }
+  ],
+  "pandits": [
+    { "id": "p1", "name": "Pt. Ramesh Sharma", "experienceYears": 22, "languages": ["Hindi", "Sanskrit", "English"], "specializations": ["Griha Pravesh", "Vivaha"], "rating": 4.9, "reviewsCount": 312, "priceMultiplier": 1.0 },
+    { "id": "p2", "name": "Pt. Suresh Iyer", "experienceYears": 18, "languages": ["Tamil", "Sanskrit", "English"], "specializations": ["Satyanarayan", "Navagraha"], "rating": 4.8, "reviewsCount": 256, "priceMultiplier": 1.0 },
+    { "id": "p3", "name": "Pt. Anand Kulkarni", "experienceYears": 15, "languages": ["Marathi", "Hindi", "Sanskrit"], "specializations": ["Festival", "Ganesh Pooja"], "rating": 4.7, "reviewsCount": 198, "priceMultiplier": 0.95 },
+    { "id": "p4", "name": "Pt. Vasudev Bhat", "experienceYears": 28, "languages": ["Kannada", "Sanskrit", "English"], "specializations": ["Vivaha", "Antim Sanskar"], "rating": 4.95, "reviewsCount": 401, "priceMultiplier": 1.15 },
+    { "id": "p5", "name": "Pt. Mahesh Tripathi", "experienceYears": 12, "languages": ["Hindi", "Bhojpuri", "Sanskrit"], "specializations": ["Navagraha", "Shani"], "rating": 4.6, "reviewsCount": 142, "priceMultiplier": 0.9 }
+  ]
+}
