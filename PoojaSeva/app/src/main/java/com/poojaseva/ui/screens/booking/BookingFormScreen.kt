@@ -83,10 +83,11 @@ class BookingFormViewModel @Inject constructor(
         if (!isValid) return
         saving = true
         viewModelScope.launch {
-		val timeStr = time
-	        val cal = Calendar.getInstance().apply {
-		    val (h, m) = timeStr.split(":").map { it.toInt() }
-		    set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
+            val timeStr = time
+            val cal = Calendar.getInstance().apply {
+                timeInMillis = date!!
+                val (h, m) = timeStr.split(":").map { it.toInt() }
+                set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
             }
             val booking = Booking(
                 id = "",

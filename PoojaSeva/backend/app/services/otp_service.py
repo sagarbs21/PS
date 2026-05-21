@@ -1,0 +1,32 @@
+from datetime import datetime, timedelta
+import random
+
+from sqlalchemy.orm import Session
+from twilio.rest import Client
+
+from app.core.config import settings
+from app.core.security import hash_otp
+from app.models.otp import OtpCode
+
+
+def generate_code() -> str:
+    return f"{random.randint(0, 999999):06d}"
+
+
+def send_otp_sms(phone: str, code: str) -> None:
+    client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+    body = f"Your PoojaSeva OTP is {code}. It expires in {settings.otp_expires_minutes} minutes."
+    client.messages.create(
+        to=phone,
+        from_=settings.twilio_from_number,
+        body=body,
+    )
+
+
+def create_otp(db: Session, phone: str) -> None:
+    code = generate_code()
+    expires_at = datetime.utcnow() + timedelta(minutes=settings.otp_expires_minutes)
+    otp = OtpCode(phone=phone, code_hash=hash_otp(code), expires_at=expires_at)
+    db.add(otp)
+    db.commit()
+    send_otp_sms(phone, code)

@@ -15,7 +15,7 @@ class StubAuthRepository @Inject constructor() : AuthRepository {
     override fun observeUser(): Flow<User?> = user.asStateFlow()
 
     override suspend fun continueAsGuest() {
-        user.value = User(id = "guest", name = "Guest", phone = null, email = null, isGuest = true)
+        user.value = User(id = "guest", name = "Guest", phone = null, email = null, isGuest = true, role = "guest")
     }
 
     override suspend fun requestOtp(phone: String): Result<Unit> =
@@ -23,7 +23,7 @@ class StubAuthRepository @Inject constructor() : AuthRepository {
 
     override suspend fun verifyOtp(phone: String, otp: String): Result<User> {
         if (otp != "123456") return Result.failure(IllegalArgumentException("Invalid OTP (try 123456)"))
-        val u = User(id = "u_$phone", name = "Devotee", phone = phone, email = null, isGuest = false)
+        val u = User(id = "u_$phone", name = "Devotee", phone = phone, email = null, isGuest = false, role = "user")
         user.value = u
         return Result.success(u)
     }
