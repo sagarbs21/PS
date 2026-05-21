@@ -14,6 +14,13 @@ class Settings(BaseSettings):
     twilio_from_number: str
     otp_expires_minutes: int = 5
 
+    otp_mode: str = "twilio"  # twilio | email | stub
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+
     admin_phones: str = ""
 
     class Config:

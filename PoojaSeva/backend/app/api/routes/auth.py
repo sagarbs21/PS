@@ -18,7 +18,9 @@ router = APIRouter()
 
 @router.post("/otp/request")
 def request_otp(payload: OtpRequest, db: Session = Depends(get_db)) -> dict:
-    create_otp(db, payload.phone)
+    code = create_otp(db, payload.phone, payload.email)
+    if settings.otp_mode == "stub":
+        return {"status": "stub", "code": code}
     return {"status": "sent"}
 
 

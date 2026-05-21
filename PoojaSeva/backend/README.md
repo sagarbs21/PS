@@ -43,6 +43,12 @@ docker compose exec api python -m app.seed.seed_from_json
 Use `Authorization: Bearer <token>` for authenticated endpoints.
 `POST /auth/logout` revokes the active token.
 
+## OTP Modes
+Set `OTP_MODE` to `twilio`, `email`, or `stub`.
+- `twilio`: sends SMS via Twilio
+- `email`: sends OTP via SMTP (requires SMTP_* settings)
+- `stub`: returns OTP in the `/auth/otp/request` response (dev only)
+
 ## Roles
 Set `ADMIN_PHONES` (comma-separated) in `.env` to grant admin role on OTP verify.
 
