@@ -1,8 +1,6 @@
-name: Build Debug APK
+name: Build Dev Debug APK
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -26,9 +24,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
-
-      - name: Generate Gradle wrapper
-        run: gradle wrapper --gradle-version 8.7
 
       - name: Build devDebug APK
         run: ./gradlew :app:assembleDevDebug --no-daemon --stacktrace
