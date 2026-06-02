@@ -1,3 +1,15 @@
+# Secrets / environment
+.env
+*.env
+!*.env.example
+
+# Python (backend)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
 # Build outputs
 *.iml
 .gradle/

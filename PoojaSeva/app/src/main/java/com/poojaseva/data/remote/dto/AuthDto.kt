@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class OtpRequestDto(
     val phone: String,
+    val email: String? = null,
 )
 
 @Serializable

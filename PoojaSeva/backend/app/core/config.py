@@ -9,9 +9,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expires_minutes: int = 60
 
-    twilio_account_sid: str
-    twilio_auth_token: str
-    twilio_from_number: str
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
     otp_expires_minutes: int = 5
 
     otp_mode: str = "twilio"  # twilio | email | stub

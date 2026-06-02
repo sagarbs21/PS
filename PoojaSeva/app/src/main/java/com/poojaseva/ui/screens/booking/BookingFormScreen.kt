@@ -58,6 +58,8 @@ class BookingFormViewModel @Inject constructor(
     var contactPhone by mutableStateOf("")
     var notes by mutableStateOf("")
     var saving by mutableStateOf(false)
+    var error by mutableStateOf<String?>(null)
+        private set
 
     init {
         viewModelScope.launch {
@@ -80,14 +82,23 @@ class BookingFormViewModel @Inject constructor(
         )
 
     fun submit(onCreated: (String) -> Unit) {
-        if (!isValid) return
+        if (!isValid || saving) return
         saving = true
+        error = null
         viewModelScope.launch {
-            val timeStr = time
+            val selectedDate = date ?: run {
+                saving = false
+                return@launch
+            }
+            val parts = time.split(":")
+            val hour = parts.getOrNull(0)?.trim()?.toIntOrNull()?.coerceIn(0, 23) ?: 10
+            val minute = parts.getOrNull(1)?.trim()?.toIntOrNull()?.coerceIn(0, 59) ?: 0
             val cal = Calendar.getInstance().apply {
-                timeInMillis = date!!
-                val (h, m) = timeStr.split(":").map { it.toInt() }
-                set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
+                timeInMillis = selectedDate
+                set(Calendar.HOUR_OF_DAY, hour)
+                set(Calendar.MINUTE, minute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
             }
             val booking = Booking(
                 id = "",
@@ -104,9 +115,15 @@ class BookingFormViewModel @Inject constructor(
                 status = BookingStatus.Pending,
                 createdAtEpochMillis = System.currentTimeMillis(),
             )
-            val id = bookings.createBooking(booking)
-            saving = false
-            onCreated(id)
+            runCatching { bookings.createBooking(booking) }
+                .onSuccess { id ->
+                    saving = false
+                    onCreated(id)
+                }
+                .onFailure { ex ->
+                    saving = false
+                    error = ex.message ?: "Could not create booking. Please try again."
+                }
         }
     }
 }
@@ -185,6 +202,14 @@ fun BookingFormScreen(
                 label = { Text(stringResource(R.string.booking_notes_hint)) }, modifier = Modifier.fillMaxWidth())
 
             Spacer(Modifier.height(8.dp))
+            vm.error?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             PrimaryButton(
                 text = "${stringResource(R.string.action_proceed_payment)}  ·  ${stringResource(R.string.price_format, vm.totalInr.toString())}",
                 enabled = vm.isValid && !vm.saving,

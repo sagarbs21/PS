@@ -34,7 +34,7 @@ def send_otp_email(email: str, code: str) -> None:
         f"Your PoojaSeva OTP is {code}. It expires in {settings.otp_expires_minutes} minutes."
     )
 
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
         server.starttls()
         server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(msg)

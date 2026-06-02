@@ -18,7 +18,7 @@ class StubAuthRepository @Inject constructor() : AuthRepository {
         user.value = User(id = "guest", name = "Guest", phone = null, email = null, isGuest = true, role = "guest")
     }
 
-    override suspend fun requestOtp(phone: String): Result<Unit> =
+    override suspend fun requestOtp(phone: String, email: String?): Result<Unit> =
         if (phone.length >= 10) Result.success(Unit) else Result.failure(IllegalArgumentException("Invalid phone"))
 
     override suspend fun verifyOtp(phone: String, otp: String): Result<User> {

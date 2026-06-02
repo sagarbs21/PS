@@ -1,10 +1,13 @@
 package com.poojaseva.ui.screens.auth
 
+import android.util.Patterns
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -20,17 +23,23 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(private val auth: AuthRepository) : ViewModel() {
     var phone by mutableStateOf("")
+    var email by mutableStateOf("")
     var otp by mutableStateOf("")
     var otpRequested by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var loading by mutableStateOf(false)
 
+    val phoneValid: Boolean get() = phone.length == 10
+    val emailValid: Boolean get() = Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
+    val canRequestOtp: Boolean get() = phoneValid && emailValid
+
     fun requestOtp() {
+        if (!canRequestOtp) return
         loading = true; error = null
         viewModelScope.launch {
-            auth.requestOtp(phone)
+            auth.requestOtp(phone, email)
                 .onSuccess { otpRequested = true }
-                .onFailure { error = it.message }
+                .onFailure { error = it.message ?: "Could not send code. Check your connection and try again." }
             loading = false
         }
     }
@@ -62,6 +71,17 @@ fun AuthScreen(onAuthenticated: () -> Unit, vm: AuthViewModel = hiltViewModel())
             onValueChange = { vm.phone = it.filter { c -> c.isDigit() }.take(10) },
             label = { Text(stringResource(R.string.auth_phone_hint)) },
             singleLine = true,
+            enabled = !vm.otpRequested,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = vm.email,
+            onValueChange = { vm.email = it.trim() },
+            label = { Text("Email (we'll send your code here)") },
+            singleLine = true,
+            enabled = !vm.otpRequested,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
         )
         if (vm.otpRequested) {
@@ -69,8 +89,9 @@ fun AuthScreen(onAuthenticated: () -> Unit, vm: AuthViewModel = hiltViewModel())
             OutlinedTextField(
                 value = vm.otp,
                 onValueChange = { vm.otp = it.filter { c -> c.isDigit() }.take(6) },
-                label = { Text("OTP (use 123456)") },
+                label = { Text("Enter the 6-digit code sent to your email") },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -81,7 +102,7 @@ fun AuthScreen(onAuthenticated: () -> Unit, vm: AuthViewModel = hiltViewModel())
         Spacer(Modifier.height(20.dp))
         PrimaryButton(
             text = if (vm.otpRequested) "Verify & Continue" else stringResource(R.string.auth_send_otp),
-            enabled = !vm.loading && (if (vm.otpRequested) vm.otp.length == 6 else vm.phone.length == 10),
+            enabled = !vm.loading && (if (vm.otpRequested) vm.otp.length == 6 else vm.canRequestOtp),
         ) {
             if (vm.otpRequested) vm.verify(onAuthenticated) else vm.requestOtp()
         }

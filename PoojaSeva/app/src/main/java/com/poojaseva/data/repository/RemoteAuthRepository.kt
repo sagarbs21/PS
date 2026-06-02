@@ -43,8 +43,8 @@ class RemoteAuthRepository @Inject constructor(
         user.value = User(id = "guest", name = "Guest", phone = null, email = null, isGuest = true, role = "guest")
     }
 
-    override suspend fun requestOtp(phone: String): Result<Unit> = runCatching {
-        api.requestOtp(OtpRequestDto(phone))
+    override suspend fun requestOtp(phone: String, email: String?): Result<Unit> = runCatching {
+        api.requestOtp(OtpRequestDto(phone, email?.trim()?.ifBlank { null }))
     }.map { Unit }
 
     override suspend fun verifyOtp(phone: String, otp: String): Result<User> = runCatching {

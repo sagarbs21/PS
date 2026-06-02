@@ -7,11 +7,21 @@ from app.core.database import SessionLocal
 from app.models.catalog import Category, Pandit, Service
 
 
+def _candidate_paths() -> list[Path]:
+    here = Path(__file__).resolve()
+    return [
+        here.parent / "services.json",  # bundled copy (works inside the Docker image)
+        here.parents[3] / "app" / "src" / "main" / "assets" / "services.json",  # local repo layout
+    ]
+
+
 def load_seed() -> dict:
-    root = Path(__file__).resolve().parents[3]
-    seed_path = root / "app" / "src" / "main" / "assets" / "services.json"
-    with seed_path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    for seed_path in _candidate_paths():
+        if seed_path.exists():
+            with seed_path.open("r", encoding="utf-8") as f:
+                return json.load(f)
+    searched = ", ".join(str(p) for p in _candidate_paths())
+    raise FileNotFoundError(f"services.json seed file not found. Searched: {searched}")
 
 
 def seed(db: Session) -> None:
