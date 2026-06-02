@@ -44,7 +44,9 @@ android {
         }
         create("prod") {
             dimension = "env"
-            buildConfigField("String", "API_BASE_URL", "\"https://api.example.com/\"")
+            // Public backend (works on any device, any network). Replace with the
+            // exact URL Render assigns if the service name differs.
+            buildConfigField("String", "API_BASE_URL", "\"https://poojaseva-api.onrender.com/\"")
         }
     }
 

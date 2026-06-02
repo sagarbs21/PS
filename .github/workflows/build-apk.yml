@@ -1,4 +1,4 @@
-name: Build Dev Debug APK
+name: Build Debug APKs
 
 on:
   workflow_dispatch:
@@ -25,12 +25,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build devDebug APK
-        run: ./gradlew :app:assembleDevDebug --no-daemon --stacktrace
+      - name: Build debug APKs (dev = emulator, prod = public backend)
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDevDebug :app:assembleProdDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: poojaseva-dev-debug-apk
-          path: PoojaSeva/app/build/outputs/apk/dev/debug/app-dev-debug.apk
+          name: poojaseva-apks
+          path: PoojaSeva/app/build/outputs/apk/**/debug/*.apk
           if-no-files-found: error

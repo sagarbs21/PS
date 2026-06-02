@@ -7,8 +7,9 @@ from sqlalchemy.exc import OperationalError
 
 from app import models  # noqa: F401  (registers all tables on Base.metadata)
 from app.api.routes import auth, bookings, catalog, health, payments, reviews
-from app.core.database import engine
+from app.core.database import SessionLocal, engine
 from app.models.base import Base
+from app.models.catalog import Category
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,25 @@ def init_db(retries: int = 12, delay: float = 2.0) -> None:
         raise last_err
 
 
+def seed_if_empty() -> None:
+    """Populate the catalog on first boot so a fresh DB is usable immediately."""
+    from app.seed.seed_from_json import seed
+
+    db = SessionLocal()
+    try:
+        if db.query(Category).count() == 0:
+            seed(db)
+            logger.info("Catalog seeded on startup.")
+    except Exception:
+        logger.exception("Catalog auto-seed skipped (continuing).")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    seed_if_empty()
     yield
 
 
