@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,11 +15,21 @@ from app.schemas.auth import OtpRequest, OtpVerify, TokenResponse, UserOut
 from app.services.otp_service import create_otp
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/otp/request")
 def request_otp(payload: OtpRequest, db: Session = Depends(get_db)) -> dict:
-    code = create_otp(db, payload.phone, payload.email)
+    try:
+        code = create_otp(db, payload.phone, payload.email)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        logger.exception("Failed to deliver OTP (mode=%s)", settings.otp_mode)
+        raise HTTPException(
+            status_code=502,
+            detail="Could not send the OTP. The server's email/SMS settings are missing or invalid.",
+        )
     if settings.otp_mode == "stub":
         return {"status": "stub", "code": code}
     return {"status": "sent"}
