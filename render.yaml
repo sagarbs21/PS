@@ -1,9 +1,10 @@
 # Render Blueprint — deploys the PoojaSeva backend (FastAPI) + a Postgres DB.
 # Docs: https://render.com/docs/blueprint-spec
 #
-# After connecting this repo in Render (New + > Blueprint), set the three
-# SMTP secrets (and optionally ADMIN_PHONES) in the dashboard — they are
+# After connecting this repo in Render (New + > Blueprint), set RESEND_API_KEY
+# (and optionally EMAIL_FROM / ADMIN_PHONES) in the dashboard — they are
 # marked `sync: false` so they are NOT stored in git.
+# Email is sent via the Resend HTTP API because Render blocks outbound SMTP.
 
 databases:
   - name: poojaseva-db
@@ -35,15 +36,9 @@ services:
         value: "5"
       - key: JWT_ACCESS_TOKEN_EXPIRES_MINUTES
         value: "60"
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM
-        sync: false
+      - key: EMAIL_FROM
+        value: "PoojaSeva <onboarding@resend.dev>"
       - key: ADMIN_PHONES
         sync: false

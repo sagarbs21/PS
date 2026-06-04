@@ -2,20 +2,19 @@ package com.poojaseva.data.remote
 
 import com.poojaseva.data.remote.dto.BookingDto
 import com.poojaseva.data.remote.dto.CategoryDto
-import com.poojaseva.data.remote.dto.PanditDto
-import com.poojaseva.data.remote.dto.ReviewDto
+import com.poojaseva.data.remote.dto.PaymentDto
 import com.poojaseva.data.remote.dto.ServiceDto
 import com.poojaseva.data.remote.dto.UserDto
 import com.poojaseva.domain.model.Address
 import com.poojaseva.domain.model.Booking
 import com.poojaseva.domain.model.BookingStatus
 import com.poojaseva.domain.model.Category
-import com.poojaseva.domain.model.Pandit
+import com.poojaseva.domain.model.Payment
 import com.poojaseva.domain.model.PoojaService
-import com.poojaseva.domain.model.Review
 import com.poojaseva.domain.model.User
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.time.format.DateTimeParseException
+import java.time.ZoneOffset
 
 fun CategoryDto.toDomain(): Category = Category(id, name, tagline, iconKey)
 
@@ -35,40 +34,28 @@ fun ServiceDto.toDomain(): PoojaService = PoojaService(
     reviewsCount = reviewsCount,
 )
 
-fun PanditDto.toDomain(): Pandit = Pandit(
-    id = id,
-    name = name,
-    experienceYears = experienceYears,
-    languages = languages,
-    specializations = specializations,
-    rating = rating,
-    reviewsCount = reviewsCount,
-    priceMultiplier = priceMultiplier,
-)
-
 fun BookingDto.toDomain(): Booking = Booking(
     id = id,
     serviceId = serviceId,
     serviceName = serviceName,
-    panditId = panditId,
     panditName = panditName,
     scheduledAtEpochMillis = parseEpoch(scheduledAt),
-    address = Address(addressLine, landmark, city, state ?: "", pincode),
+    address = Address(addressLine, landmark, city, state, pincode),
     contactName = contactName,
     contactPhone = contactPhone,
     notes = notes ?: "",
     totalInr = totalInr,
-    status = BookingStatus.valueOf(status),
+    status = parseStatus(status),
     createdAtEpochMillis = parseEpoch(createdAt),
 )
 
-fun ReviewDto.toDomain(): Review = Review(
-    id = id.toString(),
-    serviceId = serviceId,
-    userName = userId?.let { "User $it" } ?: "Guest",
-    rating = rating,
-    comment = comment ?: "",
-    createdAtEpochMillis = parseEpoch(createdAt),
+fun PaymentDto.toDomain(): Payment = Payment(
+    id = id,
+    bookingId = bookingId,
+    amountInr = amountInr,
+    status = status,
+    method = provider,
+    txnId = txnId,
 )
 
 fun UserDto.toDomain(): User = User(
@@ -80,10 +67,19 @@ fun UserDto.toDomain(): User = User(
     role = role,
 )
 
+/** Crash-safe: unknown statuses map to [BookingStatus.Unknown] instead of throwing. */
+fun parseStatus(value: String): BookingStatus =
+    BookingStatus.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+        ?: BookingStatus.Unknown
+
 fun parseEpoch(value: String): Long {
     return try {
         OffsetDateTime.parse(value).toInstant().toEpochMilli()
-    } catch (ex: DateTimeParseException) {
-        0L
+    } catch (_: Exception) {
+        try {
+            LocalDateTime.parse(value).toInstant(ZoneOffset.UTC).toEpochMilli()
+        } catch (_: Exception) {
+            0L
+        }
     }
 }

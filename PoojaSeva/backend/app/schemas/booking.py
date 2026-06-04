@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BookingCreate(BaseModel):
@@ -21,6 +21,8 @@ class BookingCreate(BaseModel):
 
 
 class BookingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     user_id: int | None = None
     service_id: str

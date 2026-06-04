@@ -9,42 +9,43 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.poojaseva.R
+import com.poojaseva.data.remote.toUserMessage
 import com.poojaseva.domain.model.Address
-import com.poojaseva.domain.model.Booking
-import com.poojaseva.domain.model.BookingStatus
+import com.poojaseva.domain.model.BookingDraft
 import com.poojaseva.domain.repository.BookingRepository
-import com.poojaseva.domain.repository.PanditRepository
-import com.poojaseva.domain.repository.ServiceRepository
-import com.poojaseva.nativebridge.NativePricing
+import com.poojaseva.domain.repository.CatalogRepository
+import com.poojaseva.ui.components.ErrorView
 import com.poojaseva.ui.components.MandalaDivider
 import com.poojaseva.ui.components.PrimaryButton
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
 class BookingFormViewModel @Inject constructor(
-    handle: SavedStateHandle,
-    private val services: ServiceRepository,
-    private val pandits: PanditRepository,
+    private val catalog: CatalogRepository,
     private val bookings: BookingRepository,
+    handle: SavedStateHandle,
 ) : ViewModel() {
-    val serviceId: String = handle["serviceId"] ?: ""
-    val panditId: String = handle["panditId"] ?: ""
+    private val serviceId: String = handle["serviceId"] ?: ""
 
     var serviceName by mutableStateOf("")
         private set
-    var panditName by mutableStateOf("")
-        private set
     var totalInr by mutableStateOf(0)
+        private set
+    var loadError by mutableStateOf<String?>(null)
         private set
 
     var date by mutableStateOf<Long?>(null)
@@ -57,39 +58,37 @@ class BookingFormViewModel @Inject constructor(
     var contactName by mutableStateOf("")
     var contactPhone by mutableStateOf("")
     var notes by mutableStateOf("")
+
     var saving by mutableStateOf(false)
+        private set
     var error by mutableStateOf<String?>(null)
         private set
 
-    init {
+    init { loadService() }
+
+    fun loadService() {
+        loadError = null
         viewModelScope.launch {
-            val s = services.getService(serviceId)
-            val p = pandits.getPandit(panditId)
-            serviceName = s?.name ?: ""
-            panditName = p?.name ?: ""
-            totalInr = NativePricing.calculateTotalInr(s?.priceInr ?: 0, p?.priceMultiplier ?: 1f)
+            catalog.getService(serviceId)
+                .onSuccess { serviceName = it.name; totalInr = it.priceInr }
+                .onFailure { loadError = it.toUserMessage() }
         }
     }
 
     val isValid: Boolean
-        get() = NativePricing.validateBooking(
-            date ?: 0L,
-            addressLine,
-            city,
-            pincode,
-            contactName,
-            contactPhone,
-        )
+        get() = date != null &&
+            addressLine.isNotBlank() &&
+            city.isNotBlank() &&
+            pincode.length == 6 &&
+            contactName.isNotBlank() &&
+            contactPhone.length == 10
 
     fun submit(onCreated: (String) -> Unit) {
         if (!isValid || saving) return
+        val selectedDate = date ?: return
         saving = true
         error = null
         viewModelScope.launch {
-            val selectedDate = date ?: run {
-                saving = false
-                return@launch
-            }
             val parts = time.split(":")
             val hour = parts.getOrNull(0)?.trim()?.toIntOrNull()?.coerceIn(0, 23) ?: 10
             val minute = parts.getOrNull(1)?.trim()?.toIntOrNull()?.coerceIn(0, 59) ?: 0
@@ -100,30 +99,19 @@ class BookingFormViewModel @Inject constructor(
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
-            val booking = Booking(
-                id = "",
+            val draft = BookingDraft(
                 serviceId = serviceId,
                 serviceName = serviceName,
-                panditId = panditId,
-                panditName = panditName,
                 scheduledAtEpochMillis = cal.timeInMillis,
-                address = Address(addressLine, landmark.ifBlank { null }, city, state, pincode),
+                address = Address(addressLine, landmark.ifBlank { null }, city, state.ifBlank { null }, pincode),
                 contactName = contactName,
                 contactPhone = contactPhone,
                 notes = notes,
                 totalInr = totalInr,
-                status = BookingStatus.Pending,
-                createdAtEpochMillis = System.currentTimeMillis(),
             )
-            runCatching { bookings.createBooking(booking) }
-                .onSuccess { id ->
-                    saving = false
-                    onCreated(id)
-                }
-                .onFailure { ex ->
-                    saving = false
-                    error = ex.message ?: "Could not create booking. Please try again."
-                }
+            bookings.createBooking(draft)
+                .onSuccess { saving = false; onCreated(it.id) }
+                .onFailure { saving = false; error = it.toUserMessage() }
         }
     }
 }
@@ -131,8 +119,6 @@ class BookingFormViewModel @Inject constructor(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingFormScreen(
-    serviceId: String,
-    panditId: String,
     onBack: () -> Unit,
     onCreated: (String) -> Unit,
     vm: BookingFormViewModel = hiltViewModel(),
@@ -146,21 +132,25 @@ fun BookingFormScreen(
                 title = { Text(stringResource(R.string.booking_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                     }
-                }
+                },
             )
+        },
+    ) { padding ->
+        if (vm.loadError != null) {
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                ErrorView(vm.loadError!!, onRetry = vm::loadService)
+            }
+            return@Scaffold
         }
-    ) { p ->
         Column(
-            Modifier.padding(p).verticalScroll(rememberScrollState()).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(vm.serviceName, style = MaterialTheme.typography.titleLarge)
-            Text("Pandit: ${vm.panditName}", color = MaterialTheme.colorScheme.onSurfaceVariant)
             MandalaDivider()
 
-            // Date & Time
             OutlinedButton(onClick = { showDate = true }, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     vm.date?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(it)) }
@@ -168,16 +158,25 @@ fun BookingFormScreen(
                 )
             }
             OutlinedTextField(
-                value = vm.time, onValueChange = { vm.time = it },
+                value = vm.time,
+                onValueChange = { vm.time = it },
                 label = { Text(stringResource(R.string.booking_select_time) + " (HH:MM)") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
             )
 
-            // Address
-            OutlinedTextField(value = vm.addressLine, onValueChange = { vm.addressLine = it },
-                label = { Text(stringResource(R.string.booking_address_hint)) }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = vm.landmark, onValueChange = { vm.landmark = it },
-                label = { Text("Landmark (optional)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = vm.addressLine,
+                onValueChange = { vm.addressLine = it },
+                label = { Text(stringResource(R.string.booking_address_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = vm.landmark,
+                onValueChange = { vm.landmark = it },
+                label = { Text("Landmark (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(value = vm.city, onValueChange = { vm.city = it }, label = { Text("City") }, modifier = Modifier.weight(1f))
                 OutlinedTextField(value = vm.state, onValueChange = { vm.state = it }, label = { Text("State") }, modifier = Modifier.weight(1f))
@@ -185,35 +184,44 @@ fun BookingFormScreen(
             OutlinedTextField(
                 value = vm.pincode,
                 onValueChange = { vm.pincode = it.filter(Char::isDigit).take(6) },
-                label = { Text("Pincode") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                label = { Text("Pincode") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
             )
 
             MandalaDivider()
-            // Contact
-            OutlinedTextField(value = vm.contactName, onValueChange = { vm.contactName = it },
-                label = { Text(stringResource(R.string.booking_name_hint)) }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = vm.contactName,
+                onValueChange = { vm.contactName = it },
+                label = { Text(stringResource(R.string.booking_name_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
             OutlinedTextField(
                 value = vm.contactPhone,
                 onValueChange = { vm.contactPhone = it.filter(Char::isDigit).take(10) },
                 label = { Text(stringResource(R.string.booking_phone_hint)) },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(value = vm.notes, onValueChange = { vm.notes = it },
-                label = { Text(stringResource(R.string.booking_notes_hint)) }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                value = vm.notes,
+                onValueChange = { vm.notes = it },
+                label = { Text(stringResource(R.string.booking_notes_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-            Spacer(Modifier.height(8.dp))
-            vm.error?.let { message ->
-                Text(
-                    text = message,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            vm.error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
+            Spacer(Modifier.height(4.dp))
             PrimaryButton(
                 text = "${stringResource(R.string.action_proceed_payment)}  ·  ${stringResource(R.string.price_format, vm.totalInr.toString())}",
-                enabled = vm.isValid && !vm.saving,
+                enabled = vm.isValid,
+                loading = vm.saving,
             ) { vm.submit(onCreated) }
+            Spacer(Modifier.height(12.dp))
         }
     }
 
@@ -222,11 +230,11 @@ fun BookingFormScreen(
             onDismissRequest = { showDate = false },
             confirmButton = {
                 TextButton(onClick = {
-                    vm.date = dateState.selectedDateMillis
+                    dateState.selectedDateMillis?.let { vm.date = it }
                     showDate = false
                 }) { Text("OK") }
             },
-            dismissButton = { TextButton(onClick = { showDate = false }) { Text("Cancel") } }
+            dismissButton = { TextButton(onClick = { showDate = false }) { Text("Cancel") } },
         ) { DatePicker(state = dateState) }
     }
 }

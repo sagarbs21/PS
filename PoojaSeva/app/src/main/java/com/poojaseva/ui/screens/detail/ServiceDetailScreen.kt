@@ -9,7 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,60 +25,57 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.poojaseva.R
+import com.poojaseva.core.UiState
+import com.poojaseva.data.remote.toUserMessage
 import com.poojaseva.domain.model.PoojaService
-import com.poojaseva.domain.model.Review
-import com.poojaseva.domain.repository.ReviewRepository
-import com.poojaseva.domain.repository.ServiceRepository
-import com.poojaseva.ui.components.LoadingState
+import com.poojaseva.domain.repository.CatalogRepository
+import com.poojaseva.ui.components.ErrorView
+import com.poojaseva.ui.components.LoadingView
 import com.poojaseva.ui.components.MandalaDivider
 import com.poojaseva.ui.components.PrimaryButton
 import com.poojaseva.ui.theme.Gold
 import com.poojaseva.ui.theme.Saffron
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class DetailUi(val service: PoojaService? = null, val reviews: List<Review> = emptyList())
-
 @HiltViewModel
-class DetailViewModel @Inject constructor(
+class ServiceDetailViewModel @Inject constructor(
+    private val catalog: CatalogRepository,
     handle: SavedStateHandle,
-    private val services: ServiceRepository,
-    reviews: ReviewRepository,
 ) : ViewModel() {
-    private val id: String = handle["serviceId"] ?: ""
-    private val serviceFlow = MutableStateFlow<PoojaService?>(null)
-    val state: StateFlow<DetailUi>
+    private val serviceId: String = handle["serviceId"] ?: ""
 
-    init {
-        viewModelScope.launch { serviceFlow.value = services.getService(id) }
-        state = kotlinx.coroutines.flow.combine(
-            serviceFlow.asStateFlow(),
-            reviews.observeReviews(id),
-        ) { svc, rvs -> DetailUi(svc, rvs) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUi())
+    private val _state = MutableStateFlow<UiState<PoojaService>>(UiState.Loading)
+    val state: StateFlow<UiState<PoojaService>> = _state.asStateFlow()
+
+    init { load() }
+
+    fun load() {
+        _state.value = UiState.Loading
+        viewModelScope.launch {
+            catalog.getService(serviceId)
+                .onSuccess { _state.value = UiState.Success(it) }
+                .onFailure { _state.value = UiState.Error(it.toUserMessage()) }
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceDetailScreen(
-    serviceId: String,
     onBack: () -> Unit,
-    onBook: () -> Unit,
-    vm: DetailViewModel = hiltViewModel(),
+    onBook: (String) -> Unit,
+    vm: ServiceDetailViewModel = hiltViewModel(),
 ) {
     val state by vm.state.collectAsState()
-    val s = state.service
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(s?.name ?: stringResource(R.string.common_loading)) },
+                title = { Text("") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
@@ -85,111 +84,89 @@ fun ServiceDetailScreen(
             )
         },
         bottomBar = {
-            if (s != null) {
-                Surface(tonalElevation = 6.dp) {
+            val s = state
+            if (s is UiState.Success) {
+                Surface(tonalElevation = 3.dp) {
                     Row(
-                        Modifier.fillMaxWidth().padding(20.dp),
+                        Modifier.fillMaxWidth().padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(stringResource(R.string.detail_price), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
-                                stringResource(R.string.price_format, s.priceInr.toString()),
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                stringResource(R.string.price_format, s.data.priceInr.toString()),
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
-                        PrimaryButton(text = stringResource(R.string.action_book_now), modifier = Modifier.weight(1.5f)) { onBook() }
+                        Spacer(Modifier.width(16.dp))
+                        PrimaryButton(
+                            text = stringResource(R.string.action_book_now),
+                            modifier = Modifier.weight(1f),
+                        ) { onBook(s.data.id) }
                     }
                 }
             }
-        }
+        },
     ) { padding ->
-        if (s == null) { LoadingState(); return@Scaffold }
-        Column(
-            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(bottom = 16.dp)
-        ) {
-            // Hero
-            Box(
-                Modifier.fillMaxWidth().height(200.dp).background(
-                    Brush.linearGradient(listOf(Saffron, Gold))
-                ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_mandala),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(120.dp)
-                )
-            }
-            Column(Modifier.padding(20.dp)) {
-                Text(s.name, style = MaterialTheme.typography.displayMedium)
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("${s.rating}  ·  ${s.reviewsCount} reviews", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.height(12.dp))
-                Text(s.description, style = MaterialTheme.typography.bodyLarge)
-                MandalaDivider()
-                InfoRow(stringResource(R.string.detail_duration), "${s.durationMinutes} min")
-                InfoRow(stringResource(R.string.detail_suggested_time), s.suggestedTime)
-                MandalaDivider()
-                Section(stringResource(R.string.detail_vidhi)) {
-                    s.vidhi.forEachIndexed { i, step ->
-                        BulletRow("${i + 1}.", step)
-                    }
-                }
-                Section(stringResource(R.string.detail_samagri)) {
-                    s.samagri.forEach { item -> BulletRow("•", item) }
-                }
-                if (state.reviews.isNotEmpty()) {
-                    Section(stringResource(R.string.detail_reviews)) {
-                        state.reviews.forEach { r ->
-                            Card(
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                            ) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(r.userName, style = MaterialTheme.typography.titleSmall)
-                                        Spacer(Modifier.width(8.dp))
-                                        Icon(Icons.Default.Star, null, tint = Gold, modifier = Modifier.size(14.dp))
-                                        Text(r.rating.toString(), style = MaterialTheme.typography.labelSmall)
-                                    }
-                                    Text(r.comment, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
-                        }
-                    }
-                }
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            when (val s = state) {
+                is UiState.Loading -> LoadingView()
+                is UiState.Error -> ErrorView(s.message, onRetry = vm::load)
+                is UiState.Success -> ServiceDetailContent(s.data)
             }
         }
     }
 }
 
-@Composable private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(label, modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontWeight = FontWeight.SemiBold)
-    }
-}
+@Composable
+private fun ServiceDetailContent(service: PoojaService) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
+        Box(
+            Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(20.dp))
+                .background(Brush.linearGradient(listOf(Saffron, Gold))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_mandala),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(96.dp),
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(service.name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Star, contentDescription = null, tint = Gold, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(
+                "${service.rating}  ·  ${service.durationMinutes} min  ·  ${service.suggestedTime}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(service.description, style = MaterialTheme.typography.bodyLarge)
 
-@Composable private fun Section(title: String, content: @Composable () -> Unit) {
-    Spacer(Modifier.height(8.dp))
-    Text(title, style = MaterialTheme.typography.titleLarge)
-    Spacer(Modifier.height(8.dp))
-    content()
-    Spacer(Modifier.height(12.dp))
-}
+        if (service.vidhi.isNotEmpty()) {
+            MandalaDivider()
+            Text(stringResource(R.string.detail_vidhi), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            service.vidhi.forEachIndexed { i, step ->
+                Text("${i + 1}.  $step", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
 
-@Composable private fun BulletRow(bullet: String, text: String) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Text(bullet, modifier = Modifier.width(24.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        Text(text, style = MaterialTheme.typography.bodyMedium)
+        if (service.samagri.isNotEmpty()) {
+            MandalaDivider()
+            Text(stringResource(R.string.detail_samagri), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            service.samagri.forEach { item ->
+                Text("•  $item", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 2.dp))
+            }
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }

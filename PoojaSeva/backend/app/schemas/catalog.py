@@ -1,7 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     tagline: str
@@ -9,6 +11,8 @@ class CategoryOut(BaseModel):
 
 
 class ServiceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     category_id: str
     name: str
@@ -25,6 +29,8 @@ class ServiceOut(BaseModel):
 
 
 class PanditOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     name: str
     experience_years: int

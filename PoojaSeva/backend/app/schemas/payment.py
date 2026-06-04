@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class PaymentCreate(BaseModel):
@@ -9,6 +9,8 @@ class PaymentCreate(BaseModel):
 
 
 class PaymentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     booking_id: str
     amount_inr: int

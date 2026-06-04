@@ -17,6 +17,6 @@ data class PaymentDto(
     @SerialName("amount_inr") val amountInr: Int,
     val status: String,
     val provider: String,
-    @SerialName("txn_id") val txnId: String?,
+    @SerialName("txn_id") val txnId: String? = null,
     @SerialName("created_at") val createdAt: String,
 )

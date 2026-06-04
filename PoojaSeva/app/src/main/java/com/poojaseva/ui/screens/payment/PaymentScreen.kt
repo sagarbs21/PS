@@ -1,103 +1,167 @@
 package com.poojaseva.ui.screens.payment
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.poojaseva.R
+import com.poojaseva.core.UiState
+import com.poojaseva.data.remote.toUserMessage
 import com.poojaseva.domain.model.Booking
-import com.poojaseva.domain.model.BookingStatus
 import com.poojaseva.domain.repository.BookingRepository
-import com.poojaseva.domain.repository.PaymentGateway
+import com.poojaseva.domain.repository.PaymentRepository
+import com.poojaseva.ui.components.ErrorView
+import com.poojaseva.ui.components.LoadingView
 import com.poojaseva.ui.components.PrimaryButton
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class PaymentViewModel @Inject constructor(
-    handle: SavedStateHandle,
     private val bookings: BookingRepository,
-    private val gateway: PaymentGateway,
+    private val payments: PaymentRepository,
+    handle: SavedStateHandle,
 ) : ViewModel() {
-    val bookingId: String = handle["bookingId"] ?: ""
-    var booking by mutableStateOf<Booking?>(null)
+    private val bookingId: String = handle["bookingId"] ?: ""
+
+    private val _state = MutableStateFlow<UiState<Booking>>(UiState.Loading)
+    val state: StateFlow<UiState<Booking>> = _state.asStateFlow()
+
+    var method by mutableStateOf("UPI")
+    var paying by mutableStateOf(false)
         private set
-    var processing by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+        private set
 
-    init { viewModelScope.launch { booking = bookings.getBooking(bookingId) } }
+    init { load() }
 
-    fun pay(method: String, onPaid: () -> Unit) {
-        val b = booking ?: return
-        processing = true; error = null
+    fun load() {
+        _state.value = UiState.Loading
         viewModelScope.launch {
-            gateway.pay(b.totalInr, b.id)
-                .onSuccess {
-                    bookings.updateStatus(b.id, BookingStatus.Confirmed)
-                    onPaid()
-                }
-                .onFailure { error = it.message }
-            processing = false
+            bookings.getBooking(bookingId)
+                .onSuccess { _state.value = UiState.Success(it) }
+                .onFailure { _state.value = UiState.Error(it.toUserMessage()) }
+        }
+    }
+
+    fun pay(onPaid: (String) -> Unit) {
+        val booking = (state.value as? UiState.Success)?.data ?: return
+        if (paying) return
+        paying = true
+        error = null
+        viewModelScope.launch {
+            payments.pay(booking.id, booking.totalInr, method)
+                .onSuccess { paying = false; onPaid(booking.id) }
+                .onFailure { paying = false; error = it.toUserMessage() }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentScreen(bookingId: String, onPaid: () -> Unit, vm: PaymentViewModel = hiltViewModel()) {
-    var selected by remember { mutableStateOf("upi") }
+fun PaymentScreen(
+    onBack: () -> Unit,
+    onPaid: (String) -> Unit,
+    vm: PaymentViewModel = hiltViewModel(),
+) {
+    val state by vm.state.collectAsState()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.payment_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            when (val s = state) {
+                is UiState.Loading -> LoadingView()
+                is UiState.Error -> ErrorView(s.message, onRetry = vm::load)
+                is UiState.Success -> PaymentContent(
+                    booking = s.data,
+                    method = vm.method,
+                    onMethodChange = { vm.method = it },
+                    paying = vm.paying,
+                    error = vm.error,
+                    onPay = { vm.pay(onPaid) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentContent(
+    booking: Booking,
+    method: String,
+    onMethodChange: (String) -> Unit,
+    paying: Boolean,
+    error: String?,
+    onPay: () -> Unit,
+) {
     val methods = listOf(
-        "upi" to stringResource(R.string.payment_method_upi),
-        "card" to stringResource(R.string.payment_method_card),
-        "wallet" to stringResource(R.string.payment_method_wallet),
+        "UPI" to stringResource(R.string.payment_method_upi),
+        "Card" to stringResource(R.string.payment_method_card),
+        "Wallet" to stringResource(R.string.payment_method_wallet),
     )
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.payment_title)) }) }) { p ->
-        Column(Modifier.padding(p).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Card(shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(vm.booking?.serviceName ?: "—", style = MaterialTheme.typography.titleLarge)
-                    Text("Pandit: ${vm.booking?.panditName ?: "—"}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.height(8.dp))
+    Column(Modifier.fillMaxSize().padding(20.dp)) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text(booking.serviceName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Amount", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        stringResource(R.string.price_format, (vm.booking?.totalInr ?: 0).toString()),
-                        style = MaterialTheme.typography.displaySmall,
+                        stringResource(R.string.price_format, booking.totalInr.toString()),
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
-
-            Text("Choose payment method", style = MaterialTheme.typography.titleMedium)
-            methods.forEach { (key, label) ->
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                        .background(if (selected == key) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
-                        .selectable(selected = selected == key, onClick = { selected = key })
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = selected == key, onClick = { selected = key })
-                    Spacer(Modifier.width(8.dp))
-                    Text(label, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            vm.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Spacer(Modifier.weight(1f))
-            PrimaryButton(
-                text = if (vm.processing) stringResource(R.string.common_loading) else stringResource(R.string.action_pay_now),
-                enabled = !vm.processing && vm.booking != null,
-            ) { vm.pay(selected, onPaid) }
         }
+        Spacer(Modifier.height(16.dp))
+        Text("Payment method", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        methods.forEach { (key, label) ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .selectable(selected = method == key, onClick = { onMethodChange(key) })
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = method == key, onClick = { onMethodChange(key) })
+                Spacer(Modifier.width(8.dp))
+                Text(label, style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+        error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(8.dp))
+        }
+        PrimaryButton(
+            text = "${stringResource(R.string.action_pay_now)}  ·  ${stringResource(R.string.price_format, booking.totalInr.toString())}",
+            loading = paying,
+        ) { onPay() }
     }
 }

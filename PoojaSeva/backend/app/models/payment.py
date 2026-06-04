@@ -10,6 +10,6 @@ class Payment(Base):
     booking_id = Column(String(64), nullable=False, index=True)
     amount_inr = Column(Integer, nullable=False)
     status = Column(String(30), default="Created", nullable=False)
-    provider = Column(String(50), default="twilio", nullable=False)
+    provider = Column(String(50), default="manual", nullable=False)
     txn_id = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

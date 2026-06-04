@@ -1,9 +1,9 @@
 # PoojaSeva Backend
 
-FastAPI + PostgreSQL backend with OTP via Twilio.
+FastAPI + PostgreSQL backend with email OTP via Resend.
 
 ## Setup
-1) Copy `.env.example` to `.env` and set Twilio creds.
+1) Copy `.env.example` to `.env` and set `RESEND_API_KEY` (or use `OTP_MODE=stub` for local dev).
 2) Start services:
 
 ```bash
@@ -44,10 +44,9 @@ Use `Authorization: Bearer <token>` for authenticated endpoints.
 `POST /auth/logout` revokes the active token.
 
 ## OTP Modes
-Set `OTP_MODE` to `twilio`, `email`, or `stub`.
-- `twilio`: sends SMS via Twilio
-- `email`: sends OTP via SMTP (requires SMTP_* settings)
-- `stub`: returns OTP in the `/auth/otp/request` response (dev only)
+Set `OTP_MODE` to `email` or `stub`.
+- `email`: sends the OTP via the Resend HTTP API (requires `RESEND_API_KEY`). Works on hosts that block SMTP (e.g. Render).
+- `stub`: returns the OTP in the `/auth/otp/request` response (dev only).
 
 ## Roles
 Set `ADMIN_PHONES` (comma-separated) in `.env` to grant admin role on OTP verify.

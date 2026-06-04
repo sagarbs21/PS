@@ -1,17 +1,13 @@
 package com.poojaseva.di
 
-import com.poojaseva.data.repository.RemoteAuthRepository
-import com.poojaseva.data.repository.RemoteBookingRepository
-import com.poojaseva.data.repository.RemotePanditRepository
-import com.poojaseva.data.repository.RemotePaymentGateway
-import com.poojaseva.data.repository.RemoteReviewRepository
-import com.poojaseva.data.repository.RemoteServiceRepository
+import com.poojaseva.data.repository.AuthRepositoryImpl
+import com.poojaseva.data.repository.BookingRepositoryImpl
+import com.poojaseva.data.repository.CatalogRepositoryImpl
+import com.poojaseva.data.repository.PaymentRepositoryImpl
 import com.poojaseva.domain.repository.AuthRepository
 import com.poojaseva.domain.repository.BookingRepository
-import com.poojaseva.domain.repository.PanditRepository
-import com.poojaseva.domain.repository.PaymentGateway
-import com.poojaseva.domain.repository.ReviewRepository
-import com.poojaseva.domain.repository.ServiceRepository
+import com.poojaseva.domain.repository.CatalogRepository
+import com.poojaseva.domain.repository.PaymentRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -21,10 +17,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-    @Binds @Singleton abstract fun bindServiceRepo(impl: RemoteServiceRepository): ServiceRepository
-    @Binds @Singleton abstract fun bindPanditRepo(impl: RemotePanditRepository): PanditRepository
-    @Binds @Singleton abstract fun bindBookingRepo(impl: RemoteBookingRepository): BookingRepository
-    @Binds @Singleton abstract fun bindAuthRepo(impl: RemoteAuthRepository): AuthRepository
-    @Binds @Singleton abstract fun bindReviewRepo(impl: RemoteReviewRepository): ReviewRepository
-    @Binds @Singleton abstract fun bindPayment(impl: RemotePaymentGateway): PaymentGateway
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCatalogRepository(impl: CatalogRepositoryImpl): CatalogRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBookingRepository(impl: BookingRepositoryImpl): BookingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPaymentRepository(impl: PaymentRepositoryImpl): PaymentRepository
 }

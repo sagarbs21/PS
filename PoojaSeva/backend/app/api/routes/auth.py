@@ -1,8 +1,9 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, get_token_payload, security
@@ -16,6 +17,13 @@ from app.services.otp_service import create_otp
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Coerce a possibly-naive datetime (older rows / SQLite) to aware UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 @router.post("/otp/request")
@@ -44,27 +52,38 @@ def verify_otp(payload: OtpVerify, db: Session = Depends(get_db)) -> TokenRespon
         .first()
     )
     if record is None:
-        raise HTTPException(status_code=400, detail="OTP not found")
-    if record.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="OTP expired")
+        raise HTTPException(status_code=400, detail="Request an OTP first")
+    if _as_utc(record.expires_at) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="OTP expired. Request a new one")
+    if record.attempts >= settings.otp_max_attempts:
+        raise HTTPException(status_code=429, detail="Too many attempts. Request a new OTP")
     if record.code_hash != hash_otp(payload.code):
         record.attempts += 1
         db.commit()
         raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    # OTP is correct: consume every code for this phone so it cannot be reused.
+    db.query(OtpCode).filter(OtpCode.phone == payload.phone).delete()
+    db.commit()
 
     user = db.query(User).filter(User.phone == payload.phone).first()
     if user is None:
         role = "admin" if payload.phone in settings.admin_phone_set() else "user"
         user = User(phone=payload.phone, role=role)
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except IntegrityError:
+            # Concurrent first-time verify for the same phone created the row first.
+            db.rollback()
+            user = db.query(User).filter(User.phone == payload.phone).first()
     elif payload.phone in settings.admin_phone_set() and user.role != "admin":
         user.role = "admin"
         db.commit()
 
     token = create_access_token(str(user.id), {"phone": user.phone, "role": user.role})
-    expires_at = datetime.utcnow() + timedelta(minutes=settings.jwt_access_token_expires_minutes)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_token_expires_minutes)
     return TokenResponse(
         access_token=token,
         expires_at=expires_at,
@@ -86,7 +105,14 @@ def logout(
     jti = payload.get("jti")
     exp = payload.get("exp")
     if jti and exp:
-        revoked = RevokedToken(jti=jti, expires_at=datetime.utcfromtimestamp(exp))
-        db.add(revoked)
-        db.commit()
+        already_revoked = db.query(RevokedToken).filter(RevokedToken.jti == jti).first()
+        if already_revoked is None:
+            revoked = RevokedToken(
+                jti=jti, expires_at=datetime.fromtimestamp(exp, tz=timezone.utc)
+            )
+            db.add(revoked)
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
     return {"status": "logged_out"}

@@ -25,7 +25,7 @@ data class UserDto(
 @Serializable
 data class TokenResponseDto(
     @SerialName("access_token") val accessToken: String,
-    @SerialName("token_type") val tokenType: String,
+    @SerialName("token_type") val tokenType: String? = null,
     @SerialName("expires_at") val expiresAt: String,
     val user: UserDto,
 )

@@ -3,8 +3,8 @@ package com.poojaseva.ui.screens.profile
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -16,58 +16,81 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.poojaseva.R
-import com.poojaseva.domain.model.User
 import com.poojaseva.domain.repository.AuthRepository
+import com.poojaseva.domain.repository.AuthState
 import com.poojaseva.ui.components.MandalaDivider
+import com.poojaseva.ui.components.PrimaryButton
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ProfileViewModel @Inject constructor(private val auth: AuthRepository) : ViewModel() {
-    val user: StateFlow<User?> = auth.observeUser().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-    fun logout() { viewModelScope.launch { auth.logout() } }
+class ProfileViewModel @Inject constructor(
+    private val auth: AuthRepository,
+) : ViewModel() {
+    val authState: StateFlow<AuthState> = auth.authState
+
+    fun logout(onDone: () -> Unit) {
+        viewModelScope.launch {
+            auth.logout()
+            onDone()
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(onBack: () -> Unit, vm: ProfileViewModel = hiltViewModel()) {
-    val user by vm.user.collectAsState()
+fun ProfileScreen(
+    onBack: () -> Unit,
+    onSignIn: () -> Unit,
+    onLoggedOut: () -> Unit,
+    vm: ProfileViewModel = hiltViewModel(),
+) {
+    val authState by vm.authState.collectAsState()
+    val user = (authState as? AuthState.Authenticated)?.user
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.profile_title)) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) } }
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                    }
+                },
             )
-        }
-    ) { p ->
-        Column(Modifier.padding(p).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        },
+    ) { padding ->
+        Column(
+            Modifier.padding(padding).padding(20.dp).fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             ListItem(
                 headlineContent = { Text(user?.name ?: "Guest") },
-                supportingContent = { Text(user?.phone ?: "Sign in for full features") },
+                supportingContent = { Text(user?.phone ?: "Sign in to book and track services") },
             )
             MandalaDivider()
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.profile_addresses)) },
-                leadingContent = { Icon(Icons.Default.Translate, null) }
-            )
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.profile_language)) },
-                supportingContent = { Text("English (default)") },
-                leadingContent = { Icon(Icons.Default.Translate, null) }
-            )
+
             ListItem(
                 headlineContent = { Text(stringResource(R.string.profile_about)) },
-                supportingContent = { Text("PoojaSeva v0.1.0") }
+                supportingContent = { Text("PoojaSeva v0.1.0") },
+                leadingContent = { Icon(Icons.Default.Info, contentDescription = null) },
             )
+
             Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = { vm.logout(); onBack() }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Logout, null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.profile_logout))
+
+            if (user == null) {
+                PrimaryButton(text = "Sign in") { onSignIn() }
+            } else {
+                OutlinedButton(
+                    onClick = { vm.logout(onLoggedOut) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.profile_logout))
+                }
             }
         }
     }

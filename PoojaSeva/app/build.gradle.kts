@@ -20,12 +20,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17"
-            }
-        }
     }
 
     flavorDimensions += "env"
@@ -34,6 +28,7 @@ android {
             dimension = "env"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
+            // Android emulator alias for the host machine's localhost.
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/\"")
         }
         create("staging") {
@@ -44,8 +39,7 @@ android {
         }
         create("prod") {
             dimension = "env"
-            // Public backend (works on any device, any network). Replace with the
-            // exact URL Render assigns if the service name differs.
+            // Public backend (works on any device/network). Update if Render assigns a different URL.
             buildConfigField("String", "API_BASE_URL", "\"https://poojaseva-api.onrender.com/\"")
         }
     }
@@ -61,6 +55,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -72,19 +67,14 @@ android {
         buildConfig = true
     }
 
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -102,15 +92,10 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
-
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.accompanist.systemuicontroller)
     implementation(libs.retrofit2)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)

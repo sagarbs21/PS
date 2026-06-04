@@ -5,10 +5,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,17 +18,24 @@ class TokenStore @Inject constructor(
 ) {
     private val tokenKey = stringPreferencesKey("access_token")
 
-    val tokenFlow: Flow<String?> = context.authDataStore.data.map { it[tokenKey] }
+    // Cached so the OkHttp auth interceptor never has to block on DataStore.
+    @Volatile
+    private var cached: String? = null
+
+    suspend fun load(): String? {
+        cached = context.authDataStore.data.map { it[tokenKey] }.first()
+        return cached
+    }
+
+    fun cachedToken(): String? = cached
 
     suspend fun setToken(token: String) {
-        context.authDataStore.edit { prefs -> prefs[tokenKey] = token }
+        cached = token
+        context.authDataStore.edit { it[tokenKey] = token }
     }
 
     suspend fun clear() {
-        context.authDataStore.edit { prefs -> prefs.remove(tokenKey) }
+        cached = null
+        context.authDataStore.edit { it.remove(tokenKey) }
     }
-
-    suspend fun getToken(): String? = tokenFlow.first()
-
-    fun getTokenBlocking(): String? = runBlocking { getToken() }
 }

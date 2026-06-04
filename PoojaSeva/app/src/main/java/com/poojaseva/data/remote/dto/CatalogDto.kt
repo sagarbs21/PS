@@ -18,24 +18,12 @@ data class ServiceDto(
     val name: String,
     @SerialName("short_description") val shortDescription: String,
     val description: String,
-    val vidhi: List<String>,
-    val samagri: List<String>,
+    val vidhi: List<String> = emptyList(),
+    val samagri: List<String> = emptyList(),
     @SerialName("duration_minutes") val durationMinutes: Int,
     @SerialName("suggested_time") val suggestedTime: String,
     @SerialName("price_inr") val priceInr: Int,
-    @SerialName("is_featured") val isFeatured: Boolean,
-    val rating: Float,
-    @SerialName("reviews_count") val reviewsCount: Int,
-)
-
-@Serializable
-data class PanditDto(
-    val id: String,
-    val name: String,
-    @SerialName("experience_years") val experienceYears: Int,
-    val languages: List<String>,
-    val specializations: List<String>,
-    val rating: Float,
-    @SerialName("reviews_count") val reviewsCount: Int,
-    @SerialName("price_multiplier") val priceMultiplier: Float,
+    @SerialName("is_featured") val isFeatured: Boolean = false,
+    val rating: Float = 4.7f,
+    @SerialName("reviews_count") val reviewsCount: Int = 0,
 )
